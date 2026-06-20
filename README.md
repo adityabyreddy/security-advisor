@@ -6,28 +6,30 @@ An **MCP (Model Context Protocol) server** that orchestrates comprehensive secur
 
 ## Overview
 
-Security Advisor exposes four MCP tools that an AI assistant (e.g., Claude, Gemini) can invoke to analyse a codebase:
+Security Advisor exposes five MCP tools that an AI assistant (e.g., Claude, Gemini) can invoke to analyse a codebase:
 
 | Tool | Description |
 |---|---|
 | `security_sast_skill` | Static Application Security Testing via **Semgrep** |
 | `security_sca_skill` | Software Composition Analysis via **Trivy** (dependency vulnerabilities) |
 | `security_iac_scan_skill` | Infrastructure-as-Code misconfiguration scan via **Trivy** (Terraform, K8s, Docker) |
-| `security_advisor_skill` | **Master skill** — runs all three scans in parallel and exports a unified SARIF report |
+| `security_container_skill` | Container image security scan via **DockerScan v2.0** (CIS benchmark, secrets, CVEs, supply-chain, runtime) |
+| `security_advisor_skill` | **Master skill** — runs all scans in parallel and exports a unified SARIF report |
 
 ### How It Works
 
 ```
 AI Assistant
     │
-    └─► security_advisor_skill(project_path)
+    └─► security_advisor_skill(project_path, image="nginx:latest")
              │
-             ├─► security_sast_skill      →  Semgrep JSON
-             ├─► security_sca_skill       →  Trivy vuln JSON
-             └─► security_iac_scan_skill  →  Trivy config JSON
+             ├─► security_sast_skill          →  Semgrep JSON
+             ├─► security_sca_skill            →  Trivy vuln JSON
+             ├─► security_iac_scan_skill       →  Trivy config JSON
+             └─► security_container_skill      →  DockerScan JSON  (optional)
                           │
                           ▼
-                  build_sarif_report()      ← pkg/sarif_report.py
+                  build_sarif_report()          ← pkg/sarif_report.py
                           │
                           ▼
           <project_path>/Security-Advisor-Report.sarif
@@ -47,6 +49,7 @@ Ensure the following are installed and available on your `PATH` before running S
 | **uv** | latest | `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
 | **Semgrep** | latest | `pip install semgrep` or `brew install semgrep` |
 | **Trivy** | latest | `brew install trivy` or see [trivy.dev](https://trivy.dev/latest/getting-started/installation/) |
+| **DockerScan** | v2.0+ | See [DockerScan Installation](#dockerscan-installation) below |
 
 ### Verify Prerequisites
 
@@ -55,7 +58,31 @@ python3 --version   # Should be 3.14+
 uv --version
 semgrep --version
 trivy --version
+dockerscan --version
 ```
+
+### DockerScan Installation
+
+DockerScan v2.0 is a single Go binary — no Python/pip required.
+
+```bash
+# macOS (Apple Silicon)
+curl -L https://github.com/cr0hn/dockerscan/releases/latest/download/dockerscan-darwin-arm64 -o dockerscan
+chmod +x dockerscan && sudo mv dockerscan /usr/local/bin/
+
+# macOS (Intel)
+curl -L https://github.com/cr0hn/dockerscan/releases/latest/download/dockerscan-darwin-amd64 -o dockerscan
+chmod +x dockerscan && sudo mv dockerscan /usr/local/bin/
+
+# Linux (amd64)
+curl -L https://github.com/cr0hn/dockerscan/releases/latest/download/dockerscan-linux-amd64 -o dockerscan
+chmod +x dockerscan && sudo mv dockerscan /usr/local/bin/
+```
+
+> **First-time setup** — download the NVD CVE database (~30 MB, updated daily) before scanning:
+> ```bash
+> dockerscan update-db
+> ```
 
 ---
 
@@ -66,7 +93,8 @@ security-advisor/
 ├── main.py               # MCP server entry point — exposes all scan tools
 ├── pkg/
 │   ├── __init__.py
-│   └── sarif_report.py   # SARIF 2.1.0 builder (parses Semgrep + Trivy JSON)
+│   ├── sarif_report.py   # SARIF 2.1.0 builder (parses Semgrep + Trivy + DockerScan JSON)
+│   └── container_scanner.py  # DockerScan CLI wrapper and output parser
 ├── pyproject.toml        # Project metadata and dependencies
 ├── uv.lock               # Locked dependency manifest
 ├── .python-version       # Pinned Python version (3.14)
@@ -190,6 +218,14 @@ The assistant will invoke `security_advisor_skill`, which:
 3. Writes the report to `<project_path>/Security-Advisor-Report.sarif`
 4. Returns a human-readable summary
 
+To also scan a Docker container image, provide the `image` parameter:
+
+```
+Run a full security analysis on /path/to/my-project and scan the nginx:latest container image
+```
+
+The assistant will invoke `security_advisor_skill` with `image="nginx:latest"`, running DockerScan in parallel and including its findings in the unified SARIF report.
+
 ### Individual Tools
 
 You can also invoke individual scan tools:
@@ -198,19 +234,21 @@ You can also invoke individual scan tools:
 Run a SAST scan on /path/to/my-project
 Run an SCA scan on /path/to/my-project
 Run an IaC scan on /path/to/my-project
+Scan the nginx:latest Docker image for security issues
 ```
 
 ---
 
 ## SARIF Report
 
-The exported **`Security-Advisor-Report.sarif`** is a valid [SARIF 2.1.0](https://docs.oasis-open.org/sarif/sarif/v2.1.0/sarif-v2.1.0.html) document containing three `runs`:
+The exported **`Security-Advisor-Report.sarif`** is a valid [SARIF 2.1.0](https://docs.oasis-open.org/sarif/sarif/v2.1.0/sarif-v2.1.0.html) document containing up to four `runs`:
 
-| Run | Tool | Findings |
-|---|---|---|
-| `runs[0]` | Semgrep | SAST code-level issues |
-| `runs[1]` | Trivy | SCA dependency vulnerabilities |
-| `runs[2]` | Trivy | IaC misconfigurations |
+| Run | Tool | Findings | Present when |
+|---|---|---|---|
+| `runs[0]` | Semgrep | SAST code-level issues | Always |
+| `runs[1]` | Trivy | SCA dependency vulnerabilities | Always |
+| `runs[2]` | Trivy | IaC misconfigurations | Always |
+| `runs[3]` | DockerScan | Container image findings | When `image` is provided |
 
 ### Severity Mapping
 
@@ -251,6 +289,8 @@ External CLI tools (not Python packages):
 |---|---|
 | `semgrep` | SAST scanning |
 | `trivy` | SCA + IaC scanning |
+| `dockerscan` | Container image security scanning (CIS, secrets, CVEs, supply-chain, runtime) |
+
 
 ---
 

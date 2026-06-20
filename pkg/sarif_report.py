@@ -110,7 +110,59 @@ def _parse_trivy_results(trivy_json: dict, scan_type: str) -> tuple[list, list]:
     return rules, results
 
 
-def build_sarif_report(sast_raw: str, sca_raw: str, iac_raw: str) -> dict:
+def _parse_dockerscan_results(container_json: dict) -> tuple[list, list]:
+    """Convert dockerscan JSON output to SARIF rules + results."""
+    rules, results = [], []
+    seen_rule_ids: set[str] = set()
+
+    for finding in container_json.get("findings", []):
+        rule_id     = finding.get("id", "unknown")
+        title       = finding.get("title", rule_id)
+        description = finding.get("description", title)
+        severity    = finding.get("severity", "INFO")
+        scanner     = finding.get("scanner", "dockerscan")
+        remediation = finding.get("remediation", "")
+        references  = finding.get("references", [])
+        image       = container_json.get("image", "")
+
+        if rule_id not in seen_rule_ids:
+            seen_rule_ids.add(rule_id)
+            help_uri = references[0] if references else None
+            rule: dict = {
+                "id":               rule_id,
+                "name":             rule_id,
+                "shortDescription": {"text": title[:200]},
+                "fullDescription":  {"text": description[:1000]},
+                "properties":       {"tags": ["Container", "dockerscan", scanner]},
+            }
+            if help_uri:
+                rule["helpUri"] = help_uri
+            if remediation:
+                rule["help"] = {"text": remediation}
+            rules.append(rule)
+
+        message_parts = [title]
+        if remediation:
+            message_parts.append(f"Remediation: {remediation}")
+
+        results.append({
+            "ruleId": rule_id,
+            "level":  _severity_to_sarif_level(severity),
+            "message": {"text": " ".join(message_parts)},
+            "locations": [{
+                "physicalLocation": {
+                    "artifactLocation": {
+                        "uri":       image,
+                        "uriBaseId": "%DOCKER%",
+                    }
+                }
+            }],
+        })
+
+    return rules, results
+
+
+def build_sarif_report(sast_raw: str, sca_raw: str, iac_raw: str, container_raw: str = "") -> dict:
     """
     Aggregate SAST, SCA, and IaC scan outputs into a single SARIF 2.1.0 document.
     Returns the SARIF document as a Python dict.
@@ -119,9 +171,12 @@ def build_sarif_report(sast_raw: str, sca_raw: str, iac_raw: str) -> dict:
     sca_json  = json.loads(sca_raw)  if sca_raw.strip()  else {}
     iac_json  = json.loads(iac_raw)  if iac_raw.strip()  else {}
 
-    sast_rules, sast_results = _parse_sast_results(sast_json)
-    sca_rules,  sca_results  = _parse_trivy_results(sca_json,  "sca")
-    iac_rules,  iac_results  = _parse_trivy_results(iac_json,  "iac")
+    container_json = json.loads(container_raw) if container_raw.strip() else {}
+
+    sast_rules,      sast_results      = _parse_sast_results(sast_json)
+    sca_rules,       sca_results       = _parse_trivy_results(sca_json,  "sca")
+    iac_rules,       iac_results       = _parse_trivy_results(iac_json,  "iac")
+    container_rules, container_results = _parse_dockerscan_results(container_json)
 
     sarif: dict = {
         "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
@@ -177,4 +232,23 @@ def build_sarif_report(sast_raw: str, sca_raw: str, iac_raw: str) -> dict:
             },
         ],
     }
+
+    # ── Container scan run (DockerScan) — appended only when data is present
+    if container_json:
+        sarif["runs"].append({
+            "tool": {
+                "driver": {
+                    "name":           "DockerScan",
+                    "informationUri": "https://github.com/cr0hn/dockerscan",
+                    "version":        "2.0",
+                    "rules":          container_rules,
+                }
+            },
+            "results":   container_results,
+            "invocations": [{
+                "executionSuccessful": True,
+                "endTimeUtc": datetime.now(timezone.utc).isoformat(),
+            }],
+        })
+
     return sarif
