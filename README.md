@@ -15,6 +15,7 @@ Security Advisor exposes five MCP tools that an AI assistant (e.g., Claude, Gemi
 | `security_iac_scan_skill` | Infrastructure-as-Code misconfiguration scan via **Trivy** (Terraform, K8s, Docker) |
 | `security_container_skill` | Container image security scan via **DockerScan v2.0** (CIS benchmark, secrets, CVEs, supply-chain, runtime) |
 | `security_advisor_skill` | **Master skill** — runs all scans in parallel and exports a unified SARIF report |
+| `security_publish_to_vulnerability_manager_skill` | Runs scans, converts findings to `vulnerability_schema.json` payload, and uploads to Vulnerability Manager for a target Organization/Project/Service/Version |
 
 ### How It Works
 
@@ -236,6 +237,57 @@ Run an SCA scan on /path/to/my-project
 Run an IaC scan on /path/to/my-project
 Scan the nginx:latest Docker image for security issues
 ```
+
+### Publish Scan Results To Vulnerability Manager
+
+Use the dedicated publish action when you want Security Advisor to both scan and upload findings into Vulnerability Manager:
+
+```
+Run Security Advisor on /path/to/my-project and publish results to Vulnerability Manager
+organization=Acme
+project=Payments
+service=checkout-api
+version=v1.4.2
+```
+
+The action will:
+
+1. Run SAST, SCA, IaC (and optional container) scans.
+2. Convert findings into `vulnerability_schema.json`-compatible JSON.
+3. Resolve or create the Organization → Project → Service → Version hierarchy.
+4. Upload the payload to `/api/versions/{version_id}/vulnerabilities/upload`.
+
+Optional parameters:
+
+### Authentication
+
+Vulnerability Manager now requires JWT authorization for API requests.
+
+Use these environment variables to control the shared basic-auth login credentials and token signing secret:
+
+- `SECURITY_ADVISOR_AUTH_USERNAME` - login username, defaults to `admin`
+- `SECURITY_ADVISOR_AUTH_PASSWORD` - login password, defaults to `admin`
+- `SECURITY_ADVISOR_JWT_SECRET` - JWT signing secret, defaults to `change-me-in-production`
+- `SECURITY_ADVISOR_ACCESS_TOKEN_EXPIRE_MINUTES` - token lifetime, defaults to `60`
+
+The MCP publish action logs in with the basic-auth credentials, receives a JWT from `/api/auth/token`, and uses that bearer token for all manager API calls.
+
+The first admin account is bootstrapped from these same credentials on startup if no admin user exists yet.
+
+### User Management
+
+Admin users can manage users through the API:
+
+- `GET /api/users`
+- `POST /api/users`
+- `GET /api/users/{user_id}`
+- `PUT /api/users/{user_id}`
+- `DELETE /api/users/{user_id}`
+
+User records include `name`, `email`, `username`, `password`, `role`, and `api_key`. Passwords and API keys are stored hashed; the raw API key is returned when a user is created or regenerated.
+
+- `vulnerability_manager_url` (default: `http://127.0.0.1:8000`)
+- `image` (for optional container scan)
 
 ---
 
