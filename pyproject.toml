@@ -20,4 +20,4 @@ dependencies = [
 ]
 
 [tool.setuptools.packages.find]
-include = ["mcp_server*", "vulnerability_manager*"]
+include = ["mcp_server*"]
