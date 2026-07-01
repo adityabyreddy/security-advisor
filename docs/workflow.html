@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Workflow - Security Advisor</title>
+  <meta name="description" content="Understand the scan, SARIF, and publishing workflow used by Security Advisor." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/style.css" />
+</head>
+<body>
+  <div class="wrap">
+    <header class="topbar">
+      <a class="brand" href="./">
+        <div class="brand-mark">🛡️</div>
+        <div class="brand-text">
+          <div class="brand-title">Security Advisor</div>
+          <div class="brand-sub">Workflow</div>
+        </div>
+      </a>
+      <nav class="nav">
+        <a href="index.html">Home</a>
+        <a href="install.html">Installation</a>
+        <a href="integration.html">Integration</a>
+        <a href="manager.html">Vulnerability Manager</a>
+      </nav>
+    </header>
+
+    <main class="hero">
+      <span class="eyebrow">Workflow</span>
+      <h1 class="page-title">From scan to SARIF to publish.</h1>
+      <p class="page-lead">
+        Security Advisor normalizes scan output, builds a unified SARIF report, and optionally converts the
+        findings into the Vulnerability Manager schema for structured upload.
+      </p>
+    </main>
+
+    <section class="section">
+      <div class="grid">
+        <article class="card wide">
+          <h3>End-to-end flow</h3>
+          <div class="timeline">
+            <div class="step"><div class="bullet">1</div><div><strong>Scan the target</strong><p>Run SAST, SCA, IaC, and optional container scans.</p></div></div>
+            <div class="step"><div class="bullet">2</div><div><strong>Build the SARIF report</strong><p>Aggregate findings into a single report for downstream tooling.</p></div></div>
+            <div class="step"><div class="bullet">3</div><div><strong>Normalize for upload</strong><p>Convert the findings into <span class="code">vulnerability_schema.json</span>-compatible data.</p></div></div>
+            <div class="step"><div class="bullet">4</div><div><strong>Publish to the manager</strong><p>Upload into the selected organization, project, service, and version.</p></div></div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <footer class="footer">This workflow is intended to support both local triage and release-based vulnerability tracking.</footer>
+  </div>
+</body>
+</html>

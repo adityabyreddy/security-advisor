@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Integration - Security Advisor</title>
+  <meta name="description" content="Connect Security Advisor to an MCP client and Vulnerability Manager." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/style.css" />
+</head>
+<body>
+  <div class="wrap">
+    <header class="topbar">
+      <a class="brand" href="./">
+        <div class="brand-mark">🛡️</div>
+        <div class="brand-text">
+          <div class="brand-title">Security Advisor</div>
+          <div class="brand-sub">Integration</div>
+        </div>
+      </a>
+      <nav class="nav">
+        <a href="index.html">Home</a>
+        <a href="install.html">Installation</a>
+        <a href="workflow.html">Workflow</a>
+        <a href="manager.html">Vulnerability Manager</a>
+      </nav>
+    </header>
+
+    <main class="hero">
+      <span class="eyebrow">Integration</span>
+      <h1 class="page-title">Wire the server into your AI assistant and the manager.</h1>
+      <p class="page-lead">
+        The MCP server runs over stdio for client integrations, while the vulnerability manager accepts
+        authenticated uploads from the publish action using a JWT-backed API session.
+      </p>
+    </main>
+
+    <section class="section">
+      <div class="grid">
+        <article class="card half">
+          <h3>MCP client config</h3>
+          <p>Point your MCP client at the repository with <span class="code">uv run main.py</span>.</p>
+          <pre>{
+  "mcpServers": {
+    "security-advisor": {
+      "command": "uv",
+      "args": ["--directory", "/absolute/path/to/security-advisor", "run", "main.py"]
+    }
+  }
+}</pre>
+        </article>
+        <article class="card half">
+          <h3>Manager upload flow</h3>
+          <p>The publish action authenticates to the manager, resolves the inventory path, and uploads normalized findings.</p>
+          <pre>organization=Acme
+project=Payments
+service=checkout-api
+version=v1.4.2</pre>
+        </article>
+      </div>
+    </section>
+
+    <footer class="footer">Integration is designed to work with both AI assistant clients and the manager UI/API.</footer>
+  </div>
+</body>
+</html>

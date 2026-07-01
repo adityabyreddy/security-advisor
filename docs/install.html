@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Installation - Security Advisor</title>
+  <meta name="description" content="Install Security Advisor and the security tooling it integrates with." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/style.css" />
+</head>
+<body>
+  <div class="wrap">
+    <header class="topbar">
+      <a class="brand" href="./">
+        <div class="brand-mark">🛡️</div>
+        <div class="brand-text">
+          <div class="brand-title">Security Advisor</div>
+          <div class="brand-sub">Installation</div>
+        </div>
+      </a>
+      <nav class="nav">
+        <a href="index.html">Home</a>
+        <a href="integration.html">Integration</a>
+        <a href="workflow.html">Workflow</a>
+        <a href="manager.html">Vulnerability Manager</a>
+      </nav>
+    </header>
+
+    <main class="hero">
+      <span class="eyebrow">Installation</span>
+      <h1 class="page-title">Set up the scanner and manager locally.</h1>
+      <p class="page-lead">
+        Security Advisor targets Python environments managed with <span class="code">uv</span> and expects the
+        external security tooling used for SAST, SCA, IaC, and container scans to be installed on your path.
+      </p>
+    </main>
+
+    <section class="section">
+      <div class="grid">
+        <article class="card half">
+          <h3>Base setup</h3>
+          <div class="timeline">
+            <div class="step"><div class="bullet">1</div><div><strong>Clone the repository</strong><p>Open the project in your workspace.</p></div></div>
+            <div class="step"><div class="bullet">2</div><div><strong>Create a virtual environment</strong><p>Run <span class="code">uv venv</span> and activate it.</p></div></div>
+            <div class="step"><div class="bullet">3</div><div><strong>Install dependencies</strong><p>Use <span class="code">uv pip install -e .</span> to install the project in editable mode.</p></div></div>
+            <div class="step"><div class="bullet">4</div><div><strong>Set the bootstrap password</strong><p>Define <span class="code">SECURITY_ADVISOR_BOOTSTRAP_ADMIN_PASSWORD</span> before starting the app.</p></div></div>
+          </div>
+        </article>
+
+        <article class="card half">
+          <h3>Required tools</h3>
+          <ul>
+            <li>Python 3.14 or newer</li>
+            <li><span class="code">uv</span> for dependency and runtime management</li>
+            <li>Semgrep for SAST scanning</li>
+            <li>Trivy for SCA and IaC scanning</li>
+            <li>DockerScan for container image scanning</li>
+          </ul>
+          <pre>python3 --version
+uv --version
+semgrep --version
+trivy --version
+dockerscan --version</pre>
+        </article>
+      </div>
+    </section>
+
+    <footer class="footer">Next: configure the MCP client and the manager upload flow.</footer>
+  </div>
+</body>
+</html>

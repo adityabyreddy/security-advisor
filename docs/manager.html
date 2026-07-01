@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vulnerability Manager - Security Advisor</title>
+  <meta name="description" content="Learn how Security Advisor integrates with the Vulnerability Manager app." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/style.css" />
+</head>
+<body>
+  <div class="wrap">
+    <header class="topbar">
+      <a class="brand" href="./">
+        <div class="brand-mark">🛡️</div>
+        <div class="brand-text">
+          <div class="brand-title">Security Advisor</div>
+          <div class="brand-sub">Vulnerability Manager</div>
+        </div>
+      </a>
+      <nav class="nav">
+        <a href="index.html">Home</a>
+        <a href="install.html">Installation</a>
+        <a href="integration.html">Integration</a>
+        <a href="workflow.html">Workflow</a>
+      </nav>
+    </header>
+
+    <main class="hero">
+      <span class="eyebrow">Vulnerability Manager</span>
+      <h1 class="page-title">Store, review, and manage findings with roles.</h1>
+      <p class="page-lead">
+        The manager provides protected UI and API access, user CRUD with basic/admin roles, and a hierarchical
+        model for organizations, projects, services, and versions.
+      </p>
+    </main>
+
+    <section class="section">
+      <div class="grid">
+        <article class="card half">
+          <h3>Access control</h3>
+          <p>All routes require authentication. Browser users sign in through the login page and receive a JWT session cookie.</p>
+        </article>
+        <article class="card half">
+          <h3>User management</h3>
+          <p>Admins can create and maintain accounts with name, email, username, password, and API key fields.</p>
+        </article>
+      </div>
+    </section>
+
+    <footer class="footer">The manager is the publishing target for normalized scan findings.</footer>
+  </div>
+</body>
+</html>

@@ -2,6 +2,8 @@
 
 An **MCP (Model Context Protocol) server** that orchestrates comprehensive security scans — SAST, SCA, and IaC — across any project and produces a unified **SARIF 2.1.0** report consumable by GitHub Advanced Security, VS Code, and other industry-standard tooling.
 
+Project site: [GitHub Pages documentation](https://adityabyreddy.github.io/security-advisor/)
+
 ---
 
 ## Overview

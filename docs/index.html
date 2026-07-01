@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Security Advisor</title>
+  <meta name="description" content="Security Advisor is an MCP server that runs security scans, generates SARIF, and publishes findings into Vulnerability Manager." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/style.css" />
+</head>
+<body>
+  <div class="wrap">
+    <header class="topbar">
+      <a class="brand" href="./">
+        <div class="brand-mark">🛡️</div>
+        <div class="brand-text">
+          <div class="brand-title">Security Advisor</div>
+          <div class="brand-sub">MCP security orchestration and vulnerability publishing</div>
+        </div>
+      </a>
+      <nav class="nav">
+        <a href="install.html">Installation</a>
+        <a href="integration.html">Integration</a>
+        <a href="workflow.html">Workflow</a>
+        <a href="manager.html">Vulnerability Manager</a>
+      </nav>
+    </header>
+
+    <main class="hero">
+      <span class="eyebrow">GitHub Pages site for the Security Advisor project</span>
+      <h1>Run scans, generate SARIF, and publish findings into Vulnerability Manager.</h1>
+      <p class="lead">
+        Security Advisor is an MCP server that coordinates SAST, SCA, IaC, and container security checks,
+        merges the output into a single SARIF report, and can publish normalized findings into the
+        Vulnerability Manager app for tracking by organization, project, service, and version.
+      </p>
+      <div class="actions">
+        <a class="btn primary" href="install.html">Get Started</a>
+        <a class="btn secondary" href="integration.html">See Integration Details</a>
+      </div>
+      <div class="stats">
+        <div class="stat"><strong>5</strong><span>MCP tools for scans and publishing</span></div>
+        <div class="stat"><strong>SARIF</strong><span>Unified report output for security tooling</span></div>
+        <div class="stat"><strong>JWT</strong><span>Protected UI and API access</span></div>
+        <div class="stat"><strong>Roles</strong><span>Basic and admin user management</span></div>
+      </div>
+    </main>
+
+    <section class="section">
+      <h2>Explore the docs</h2>
+      <div class="grid">
+        <article class="card">
+          <h3>Installation</h3>
+          <p>Set up Python, install the dependencies, and configure the security tooling used by the scanner.</p>
+          <a class="btn secondary" href="install.html">Open installation guide</a>
+        </article>
+        <article class="card">
+          <h3>Integration</h3>
+          <p>Add the MCP server to your client, then connect it to the Vulnerability Manager publish flow.</p>
+          <a class="btn secondary" href="integration.html">Open integration guide</a>
+        </article>
+        <article class="card">
+          <h3>Workflow</h3>
+          <p>See the scan → SARIF → publish sequence and the shape of the end-to-end data flow.</p>
+          <a class="btn secondary" href="workflow.html">Open workflow guide</a>
+        </article>
+      </div>
+    </section>
+
+    <footer class="footer">
+      Security Advisor is an MCP-driven security workflow for scanning, reporting, and publishing vulnerabilities.
+    </footer>
+  </div>
+</body>
+</html>
