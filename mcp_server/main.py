@@ -293,6 +293,30 @@ def _convert_iac_findings(iac_json: dict) -> list[dict]:
     return items
 
 
+def _convert_gemini_findings(gemini_json: dict) -> list[dict]:
+    items: list[dict] = []
+    for finding in gemini_json.get("findings", []):
+        file_path = finding.get("file_path", "")
+        line_number = finding.get("line_number")
+        affected_component = (
+            f"{file_path}:{line_number}" if file_path and line_number else file_path or None
+        )
+        items.append(
+            {
+                "title": finding.get("issue") or "Gemini code review finding",
+                "description": (
+                    f"[{finding.get('category', 'GENERAL')}] {finding.get('issue', '')}"
+                ).strip("[] ") or "Gemini code review finding.",
+                "severity": _normalize_severity(finding.get("severity")),
+                "status": "OPEN",
+                "affected_component": affected_component,
+                "remediation": finding.get("suggestion") or None,
+                "source_tool": "Gemini Code Review",
+            }
+        )
+    return items
+
+
 def _convert_container_findings(container_raw: str) -> list[dict]:
     if not container_raw.strip():
         return []
@@ -392,7 +416,69 @@ async def security_iac_scan_skill(path: str) -> str:
     result = subprocess.run(cmd, capture_output=True, text=True)
     return result.stdout
 
-# 4. Container Image Skill
+# 4. Gemini Code Review Skill
+@mcp.tool()
+async def security_gemini_code_review_skill(path: str) -> str:
+    """
+    Runs Gemini CLI code review on the current branch's changes.
+
+    Executes ``gemini`` in non-interactive mode with the code-review skill,
+    parses the JSON output, and returns a vulnerability-schema-compatible JSON
+    payload (``{"vulnerabilities": [...]}``) ready for upload to Vulnerability
+    Manager.
+
+    Parameters
+    ----------
+    path : str
+        Absolute path to the git repository root to review.
+    """
+    cmd = [
+        "gemini",
+        "-p", "activate the code review skill and review code changes in current branch",
+        "--yolo",
+        "-e", "code-review",
+        "--output-format", "json",
+    ]
+    result = await asyncio.get_event_loop().run_in_executor(
+        None,
+        lambda: subprocess.run(
+            cmd, capture_output=True, text=True, cwd=path
+        ),
+    )
+
+    raw_output = result.stdout.strip()
+    if not raw_output:
+        error_detail = result.stderr.strip()
+        return json.dumps(
+            {"error": "Gemini code review produced no output.", "stderr": error_detail}
+        )
+
+    # Gemini may prefix streaming text before the JSON block; extract the
+    # last {...} or [...] block to be safe.
+    try:
+        gemini_json = json.loads(raw_output)
+    except json.JSONDecodeError:
+        # Try to extract a JSON object from within the output
+        start = raw_output.rfind("{")
+        end = raw_output.rfind("}") + 1
+        if start != -1 and end > start:
+            try:
+                gemini_json = json.loads(raw_output[start:end])
+            except json.JSONDecodeError:
+                return json.dumps(
+                    {"error": "Could not parse Gemini output as JSON.", "raw": raw_output}
+                )
+        else:
+            return json.dumps(
+                {"error": "Could not parse Gemini output as JSON.", "raw": raw_output}
+            )
+
+    vulnerabilities = _convert_gemini_findings(gemini_json)
+    payload = {"vulnerabilities": _clean_vulnerability_items(vulnerabilities)}
+    return json.dumps(payload, indent=2)
+
+
+# 5. Container Image Skill
 @mcp.tool()
 async def security_container_skill(image: str) -> str:
     """
@@ -599,6 +685,78 @@ async def security_publish_to_vulnerability_manager_skill(
         f"- Findings converted to schema payload: **{vulnerability_count}**\n"
         f"- Findings uploaded: **{uploaded_count}**"
     )
+
+@mcp.tool()
+async def security_gemini_publish_to_vulnerability_manager_skill(
+    path: str,
+    organization: str,
+    project: str,
+    service: str,
+    version: str,
+    vulnerability_manager_url: str = "http://127.0.0.1:8000",
+) -> str:
+    """
+    Runs Gemini CLI code review, converts findings to vulnerability_schema.json-compatible
+    payload, and uploads them into Vulnerability Manager.
+
+    Parameters
+    ----------
+    path : str
+        Absolute path to the git repository root to review.
+    organization : str
+        Vulnerability Manager organization name.
+    project : str
+        Vulnerability Manager project name.
+    service : str
+        Vulnerability Manager service name.
+    version : str
+        Vulnerability Manager version name.
+    vulnerability_manager_url : str, optional
+        Base URL for the Vulnerability Manager API, default is
+        ``http://127.0.0.1:8000``.
+    """
+    raw_result = await security_gemini_code_review_skill(path)
+
+    try:
+        result_json = json.loads(raw_result)
+    except json.JSONDecodeError:
+        return f"## Gemini Publish Error\n\nCould not parse Gemini code review output as JSON."
+
+    if "error" in result_json:
+        return (
+            f"## Gemini Publish Error\n\n"
+            f"{result_json.get('error', 'Unknown error')}\n\n"
+            f"{result_json.get('stderr', '')}"
+        ).strip()
+
+    vulnerability_count = len(result_json.get("vulnerabilities", []))
+    if vulnerability_count == 0:
+        return (
+            "## Gemini Code Review Publish\n"
+            "No findings were produced by Gemini code review, so nothing was uploaded."
+        )
+
+    try:
+        token = _login_to_vulnerability_manager(vulnerability_manager_url)
+        org_id = _get_or_create_organization(vulnerability_manager_url, organization, token)
+        project_id = _get_or_create_project(vulnerability_manager_url, org_id, project, token)
+        service_id = _get_or_create_service(vulnerability_manager_url, project_id, service, token)
+        version_id = _get_or_create_version(vulnerability_manager_url, service_id, version, token)
+        upload_result = _upload_schema_payload(vulnerability_manager_url, version_id, result_json, token)
+    except RuntimeError as exc:
+        return f"## Gemini Publish Error\n\n{exc}"
+
+    uploaded_count = upload_result.get("created", vulnerability_count)
+    return (
+        "## Gemini Code Review Publish\n"
+        f"- Organization: **{organization}**\n"
+        f"- Project: **{project}**\n"
+        f"- Service: **{service}**\n"
+        f"- Version: **{version}**\n"
+        f"- Findings converted to schema payload: **{vulnerability_count}**\n"
+        f"- Findings uploaded: **{uploaded_count}**"
+    )
+
 
 if __name__ == "__main__":
     mcp.run()

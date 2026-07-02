@@ -40,12 +40,20 @@
     <section class="section">
       <div class="grid">
         <article class="card wide">
-          <h3>End-to-end flow</h3>
+          <h3>End-to-end flow — static &amp; infrastructure scans</h3>
           <div class="timeline">
             <div class="step"><div class="bullet">1</div><div><strong>Scan the target</strong><p>Run SAST, SCA, IaC, and optional container scans.</p></div></div>
             <div class="step"><div class="bullet">2</div><div><strong>Build the SARIF report</strong><p>Aggregate findings into a single report for downstream tooling.</p></div></div>
             <div class="step"><div class="bullet">3</div><div><strong>Normalize for upload</strong><p>Convert the findings into <span class="code">vulnerability_schema.json</span>-compatible data.</p></div></div>
             <div class="step"><div class="bullet">4</div><div><strong>Publish to the manager</strong><p>Upload into the selected organization, project, service, and version.</p></div></div>
+          </div>
+        </article>
+        <article class="card wide">
+          <h3>End-to-end flow — Gemini AI code review</h3>
+          <div class="timeline">
+            <div class="step"><div class="bullet">1</div><div><strong>Run Gemini code review</strong><p>Invoke <span class="code">security_gemini_code_review_skill</span> against the repository root. The Gemini CLI reviews branch diff changes in non-interactive mode (<span class="code">--yolo --output-format json</span>).</p></div></div>
+            <div class="step"><div class="bullet">2</div><div><strong>Parse &amp; normalize</strong><p>Findings (<span class="code">severity</span>, <span class="code">file_path</span>, <span class="code">line_number</span>, <span class="code">issue</span>, <span class="code">suggestion</span>) are mapped into <span class="code">vulnerability_schema.json</span> shape with <span class="code">source_tool: "Gemini Code Review"</span>.</p></div></div>
+            <div class="step"><div class="bullet">3</div><div><strong>Publish to the manager (optional)</strong><p>Use <span class="code">security_gemini_publish_to_vulnerability_manager_skill</span> to authenticate, resolve the org/project/service/version hierarchy, and upload in one step.</p></div></div>
           </div>
         </article>
       </div>

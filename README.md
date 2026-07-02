@@ -8,7 +8,7 @@ Project site: [GitHub Pages documentation](https://adityabyreddy.github.io/secur
 
 ## Overview
 
-Security Advisor exposes five MCP tools that an AI assistant (e.g., Claude, Gemini) can invoke to analyse a codebase:
+Security Advisor exposes seven MCP tools that an AI assistant (e.g., Claude, Gemini) can invoke to analyse a codebase:
 
 | Tool | Description |
 |---|---|
@@ -16,26 +16,35 @@ Security Advisor exposes five MCP tools that an AI assistant (e.g., Claude, Gemi
 | `security_sca_skill` | Software Composition Analysis via **Trivy** (dependency vulnerabilities) |
 | `security_iac_scan_skill` | Infrastructure-as-Code misconfiguration scan via **Trivy** (Terraform, K8s, Docker) |
 | `security_container_skill` | Container image security scan via **DockerScan v2.0** (CIS benchmark, secrets, CVEs, supply-chain, runtime) |
-| `security_advisor_skill` | **Master skill** — runs all scans in parallel and exports a unified SARIF report |
-| `security_publish_to_vulnerability_manager_skill` | Runs scans, converts findings to `vulnerability_schema.json` payload, and uploads to Vulnerability Manager for a target Organization/Project/Service/Version |
+| `security_gemini_code_review_skill` | AI-powered code review via **Gemini CLI** — reviews branch diff and returns `vulnerability_schema.json`-compatible JSON |
+| `security_advisor_skill` | **Master skill** — runs SAST, SCA, IaC and optional container scans in parallel, exports a unified SARIF report |
+| `security_publish_to_vulnerability_manager_skill` | Runs SAST/SCA/IaC/container scans, converts findings to `vulnerability_schema.json` payload, and uploads to Vulnerability Manager |
+| `security_gemini_publish_to_vulnerability_manager_skill` | Runs Gemini code review, converts findings to `vulnerability_schema.json` payload, and uploads to Vulnerability Manager |
 
 ### How It Works
 
 ```
 AI Assistant
     │
-    └─► security_advisor_skill(project_path, image="nginx:latest")
+    ├─► security_advisor_skill(project_path, image="nginx:latest")
+    │        │
+    │        ├─► security_sast_skill          →  Semgrep JSON
+    │        ├─► security_sca_skill            →  Trivy vuln JSON
+    │        ├─► security_iac_scan_skill       →  Trivy config JSON
+    │        └─► security_container_skill      →  DockerScan JSON  (optional)
+    │                     │
+    │                     ▼
+    │             build_sarif_report()          ← pkg/sarif_report.py
+    │                     │
+    │                     ▼
+    │         <project_path>/Security-Advisor-Report.sarif
+    │
+    └─► security_gemini_code_review_skill(path)
              │
-             ├─► security_sast_skill          →  Semgrep JSON
-             ├─► security_sca_skill            →  Trivy vuln JSON
-             ├─► security_iac_scan_skill       →  Trivy config JSON
-             └─► security_container_skill      →  DockerScan JSON  (optional)
-                          │
-                          ▼
-                  build_sarif_report()          ← pkg/sarif_report.py
-                          │
-                          ▼
-          <project_path>/Security-Advisor-Report.sarif
+             └─► gemini CLI (--yolo, -e code-review, --output-format json)
+                           │
+                           ▼
+               vulnerability_schema.json-compatible JSON payload
 ```
 
 ---
@@ -53,6 +62,7 @@ Ensure the following are installed and available on your `PATH` before running S
 | **Semgrep** | latest | `pip install semgrep` or `brew install semgrep` |
 | **Trivy** | latest | `brew install trivy` or see [trivy.dev](https://trivy.dev/latest/getting-started/installation/) |
 | **DockerScan** | v2.0+ | See [DockerScan Installation](#dockerscan-installation) below |
+| **Gemini CLI** | latest | `npm install -g @google/gemini-cli` or see [Gemini CLI docs](https://github.com/google-gemini/gemini-cli) |
 
 ### Verify Prerequisites
 
@@ -62,6 +72,7 @@ uv --version
 semgrep --version
 trivy --version
 dockerscan --version
+gemini --version
 ```
 
 ### DockerScan Installation
@@ -240,6 +251,58 @@ Run an IaC scan on /path/to/my-project
 Scan the nginx:latest Docker image for security issues
 ```
 
+### Gemini Code Review
+
+Use `security_gemini_code_review_skill` to run an AI-powered code review against the current branch's diff:
+
+```
+Run a Gemini code review on /path/to/my-project
+```
+
+The tool executes the Gemini CLI in non-interactive mode:
+
+```bash
+gemini -p 'activate the code review skill and review code changes in current branch' \
+       --yolo -e code-review --output-format json
+```
+
+It parses the JSON output and returns a `vulnerability_schema.json`-compatible payload:
+
+```json
+{
+  "vulnerabilities": [
+    {
+      "title": "Sensitive authentication tokens are being written directly to application logs",
+      "description": "[SECURITY] Sensitive authentication tokens are being written directly...",
+      "severity": "CRITICAL",
+      "status": "OPEN",
+      "affected_component": "src/services/authService.js:42",
+      "remediation": "Remove the console.error statement that explicitly dumps the raw token...",
+      "source_tool": "Gemini Code Review"
+    }
+  ]
+}
+```
+
+### Publish Gemini Code Review to Vulnerability Manager
+
+Use `security_gemini_publish_to_vulnerability_manager_skill` to run the Gemini review **and** upload findings in one step:
+
+```
+Run a Gemini code review on /path/to/my-project and publish findings to Vulnerability Manager
+organization=Acme
+project=Payments
+service=checkout-api
+version=v1.4.2
+```
+
+The action will:
+
+1. Run `security_gemini_code_review_skill` to collect findings from the current branch diff.
+2. Convert findings into `vulnerability_schema.json`-compatible JSON.
+3. Resolve or create the Organization → Project → Service → Version hierarchy.
+4. Upload the payload to `/api/versions/{version_id}/vulnerabilities/upload`.
+
 ### Publish Scan Results To Vulnerability Manager
 
 Use the dedicated publish action when you want Security Advisor to both scan and upload findings into Vulnerability Manager:
@@ -344,6 +407,7 @@ External CLI tools (not Python packages):
 | `semgrep` | SAST scanning |
 | `trivy` | SCA + IaC scanning |
 | `dockerscan` | Container image security scanning (CIS, secrets, CVEs, supply-chain, runtime) |
+| `gemini` | AI-powered code review of branch diff (Gemini CLI) |
 
 
 ---
